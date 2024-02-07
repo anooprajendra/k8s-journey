@@ -1,0 +1,81 @@
+---
+# This block defines the storage volume for storing local docker images
+apiVersion: v1
+kind: PersistentVolumeClaim
+metadata:
+  name: registry-pv-claim
+  labels:
+    app: registry
+spec:
+  storageClassName: rook-ceph-block
+  accessModes:
+    - ReadWriteOnce
+  resources:
+    requests:
+      storage: 50Gi
+
+---
+# This block defines a Pod for the Docker Private Registry
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: registry
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app: registry
+  template:
+    metadata:
+      labels:
+        app: registry
+    spec:
+      containers:
+        - name: registry
+          image: registry:latest
+          volumeMounts:
+            - name: registry-persistent
+              mountPath: /var/lib/registry
+            - name: certs-vol
+              mountPath: /certs
+              readOnly: true
+            - name: auth-vol
+              mountPath: /auth
+              readOnly: true
+          env:
+            - name: REGISTRY_AUTH
+              value: "htpasswd"
+            - name: REGISTRY_AUTH_HTPASSWD_REALM
+              value: "Registry Realm"
+            - name: REGISTRY_AUTH_HTPASSWD_PATH
+              value: "/auth/htpasswd"
+            - name: REGISTRY_HTTP_TLS_CERTIFICATE
+              value: "/certs/tls.crt"
+            - name: REGISTRY_HTTP_TLS_KEY
+              value: "/certs/tls.key"
+      volumes:
+        - name: registry-persistent
+          persistentVolumeClaim:
+            claimName: registry-pv-claim
+        - name: certs-vol
+          secret:
+            secretName: certs-secret
+        - name: auth-vol
+          secret:
+            secretName: auth-secret
+
+---
+# This block defines the service access to the registry pod
+apiVersion: v1
+kind: Service
+metadata:
+  name: registry
+spec:
+  selector:
+    app: registry
+  ports:
+    - name: http
+      nodePort: 32500
+      port: 5000
+  type: NodePort
+---
