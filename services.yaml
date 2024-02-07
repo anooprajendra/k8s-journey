@@ -1,0 +1,70 @@
+---
+# This is the service definition block for the Angular Webapp Service
+
+apiVersion: v1
+kind: Service
+metadata:
+  name: fleetman-webapp
+spec:
+  selector:
+    app: webapp
+  ports:
+    - name: http
+      port: 80
+      nodePort: 30080
+  type: NodePort
+
+---
+# This is the service definition block for the Fleetman API Gateway
+
+apiVersion: v1
+kind: Service
+metadata:
+  name: fleetman-api-gateway
+spec:
+  selector:
+    app: apigateway
+  ports:
+    - name: api-http
+      port: 8080
+---
+#
+# This is the service definition block for the position tracker
+apiVersion: v1
+kind: Service
+metadata:
+  name: fleetman-position-tracker
+spec:
+  selector:
+    app: position-tracker
+  ports:
+    - name: pt-svc
+      port: 8080
+
+---
+#
+# This is the service definition block for the ActiveMQ service
+apiVersion: v1
+kind: Service
+metadata:
+  name: fleetman-queue
+spec:
+  selector:
+    app: activemq
+  ports:
+    - name: activemq-svc
+      port: 61616
+
+---
+#
+# This is the service definition block for the ActiveMQ service
+apiVersion: v1
+kind: Service
+metadata:
+  name: fleetman-mongodb
+spec:
+  selector:
+    app: mongodb
+  ports:
+    - name: mongodb
+      port: 27017
