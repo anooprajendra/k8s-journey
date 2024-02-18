@@ -1,0 +1,21 @@
+---
+apiVersion: batch/v1
+kind: Job
+metadata:
+  name: playerpull
+spec:
+  template:
+    spec:
+      containers:
+        - name: playerpull
+          image: docker-registry:32500/nilo/playerpull:v0.0.1
+          command: ["GetTeams"]
+          args: ["MFB", "-s", "http://apiserver:4000/"]
+          env:
+            - name: TESTMODE
+              value: "1"
+      restartPolicy: "Never"
+      imagePullSecrets:
+        - name: reg-user-secret
+
+

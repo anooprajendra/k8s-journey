@@ -1,0 +1,29 @@
+{% set s = ["MFB", "MBB", "MBA", "WBB", "WVB","MVB" ]%}
+{% for sport in s %}
+---
+apiVersion: batch/v1
+kind: Job
+metadata:
+  name: playerpull-{{ sport|lower }}
+  labels:
+    jobgroup: playerpull
+spec:
+  template:
+    metadata:
+      name: playerpull
+      labels:
+        jobgroup: playerpull
+    spec:
+      containers:
+        - name: playerpull
+          image: docker-registry:32500/nilo/playerpull:v0.0.1
+          command: ["GetTeams"]
+          args: ["{{ sport }}", "-s", "http://apiserver:4000/"]
+          env:
+            - name: TESTMODE
+              value: "1"
+      restartPolicy: "Never"
+      imagePullSecrets:
+        - name: reg-user-secret
+{% endfor %}
+
