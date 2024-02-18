@@ -1,0 +1,109 @@
+---
+# This is the service definition block for API Server
+
+apiVersion: v1
+kind: Service
+metadata:
+  name: apiserver
+spec:
+  selector:
+    app: apiserver
+  ports:
+    - name: http
+      port: 4000
+
+---
+# This is the service definition block for the Postgres Server
+apiVersion: v1
+kind: Service
+metadata:
+  name: pgserver
+spec:
+  selector:
+    app: pgserver
+  ports:
+    - name: pgsvc-port
+      port: 5432
+
+---
+# This is the service definition block for the KeyCloak Server
+apiVersion: v1
+kind: Service
+metadata:
+  name: keycloak
+spec:
+  selector:
+    app: keycloak
+  ports:
+    - name: http
+      port: 8080
+---
+# #
+# # This is the service definition block for the ActiveMQ service
+# apiVersion: v1
+# kind: Service
+# metadata:
+#   name: fleetman-queue
+# spec:
+#   selector:
+#     app: activemq
+#   ports:
+#     - name: activemq-svc
+#       port: 61616
+# 
+# ---
+# #
+# # This is the service definition block for the ActiveMQ service
+# apiVersion: v1
+# kind: Service
+# metadata:
+#   name: fleetman-mongodb
+# spec:
+#   selector:
+#     app: mongodb
+#   ports:
+#     - name: mongodb
+#       port: 27017
+#
+---
+apiVersion: networking.k8s.io/v1
+kind: Ingress
+metadata:
+  name: api-ingress
+  annotations:
+    nginx.ingress.kubernetes.io/use-regex: "true"
+    nginx.ingress.kubernetes.io/rewrite-target: /$2
+    nginx.ingress.kubernetes.io/configuration-snippet: |
+      proxy_set_header        Host $host;
+      proxy_set_header        X-Real-IP $remote_addr;
+      proxy_set_header        X-Forwarded-For $proxy_add_x_forwarded_for;
+      proxy_set_header        X-Forwarded-Proto $scheme;
+
+
+spec:
+  ingressClassName: nginx
+  tls:
+    - hosts:
+        - nilo.heli0.xyz
+      secretName: nginx-secret
+  rules:
+    - host: nilo.heli0.xyz
+      http:
+        paths:
+        - path: /api(/|$)(.*)
+          pathType: ImplementationSpecific
+          backend:
+            service:
+              name: apiserver
+              port:
+                number: 4000
+        - path: /kc
+          pathType: Prefix
+          backend:
+            service:
+              name: keycloak
+              port:
+                number: 8080
+
+
+

@@ -1,0 +1,152 @@
+# This block defines the persistent volume claim for the API server
+apiVersion: v1
+kind: PersistentVolumeClaim
+metadata:
+  name: apiserver-pv-claim
+  labels:
+    app: apiserver
+spec:
+  storageClassName: rook-ceph-block
+  accessModes:
+    - ReadWriteOnce
+  resources:
+    requests:
+      storage: 1Gi
+---
+# This block defines the persistent volume claim for the Postgresql server
+apiVersion: v1
+kind: PersistentVolumeClaim
+metadata:
+  name: pgserver-pv-claim
+  labels:
+    app: pgserver
+spec:
+  storageClassName: rook-ceph-block
+  accessModes:
+    - ReadWriteOnce
+  resources:
+    requests:
+      storage: 1Gi
+---
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: pgserver
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app: pgserver
+  template:
+    metadata:
+      labels:
+        app: pgserver
+    spec:
+      containers:
+        - name: pgserver
+          image: postgres:16.2
+          env:
+            - name: POSTGRES_USER 
+              value: "nilo"
+            - name: POSTGRES_PASSWORD 
+              valueFrom:
+                secretKeyRef:
+                  name: dbpass
+                  key: password
+            - name: POSTGRES_DB 
+              value: "nilo"
+            - name: POSTGRES_HOST 
+              value: "postgres"
+          volumeMounts:
+            - name: pgserver-volume
+              mountPath: /var/lib/postgresql
+      volumes:
+        - name: pgserver-volume
+          persistentVolumeClaim:
+            claimName: pgserver-pv-claim
+
+---
+
+# This block defines a Pod for the NILO API Server
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: apiserver
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app: apiserver
+  template:
+    metadata:
+      labels:
+        app: apiserver
+    spec:
+      containers:
+        - name: nilo-api-server
+          image: docker-registry:32500/nilo/nilo-api-server:v0.0.4
+          env:
+            - name: DBFILE
+              value: "/var/data/ncaa.db"
+          volumeMounts:
+            - name: api-server-volume
+              mountPath: /var/data
+      imagePullSecrets:
+        - name: reg-user-secret
+      volumes:
+        - name: api-server-volume 
+          persistentVolumeClaim:
+            claimName: apiserver-pv-claim
+---
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: keycloak
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app: keycloak
+  template:
+    metadata:
+      labels:
+        app: keycloak
+    spec:
+      initContainers:
+      - name: check-db-ready
+        image: postgres:16.2
+        command: ['sh', '-c', 
+          'until pg_isready -h pgserver -p 5432; 
+          do echo waiting for database; sleep 2; done;']
+      containers:
+        - name: keycloak
+          image: quay.io/keycloak/keycloak
+          command: ["/opt/keycloak/bin/kc.sh"]
+          args: ["start", "--proxy", "edge", "--hostname-strict=false"]
+          env:
+            - name: KC_DB 
+              value: "postgres"
+            - name: KC_DB_URL 
+              value: "jdbc:postgresql://pgserver:5432/nilo"
+            - name: KC_DB_USERNAME 
+              value: "nilo"
+            - name: KC_DB_PASSWORD 
+              valueFrom:
+                secretKeyRef:
+                  name: dbpass
+                  key: password
+            - name: KC_HOSTNAME 
+              value: "nilo.heli0.xyz"
+            - name: KC_HOSTNAME_PATH 
+              value: "/kc"
+            - name: KC_HTTP_RELATIVE_PATH 
+              value: "/kc"
+            - name: KEYCLOAK_ADMIN 
+              value: "admin"
+            - name: KEYCLOAK_ADMIN_PASSWORD 
+              valueFrom:
+                secretKeyRef:
+                  name: kcpass
+                  key: password
+
+
