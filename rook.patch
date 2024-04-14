@@ -1,8 +1,8 @@
 diff --git a/deploy/examples/operator.yaml b/deploy/examples/operator.yaml
-index a41ffe5ef..f31d32b24 100644
+index 5a5b1d4a6..1939d87a6 100644
 --- a/deploy/examples/operator.yaml
 +++ b/deploy/examples/operator.yaml
-@@ -146,7 +146,7 @@ data:
+@@ -156,7 +156,7 @@ data:
    # CSI_NFS_PLUGIN_UPDATE_STRATEGY: "OnDelete"
  
    # kubelet directory path, if kubelet configured to use other than /var/lib/kubelet path.
@@ -11,7 +11,7 @@ index a41ffe5ef..f31d32b24 100644
  
    # Labels to add to the CSI CephFS Deployments and DaemonSets Pods.
    # ROOK_CSI_CEPHFS_POD_LABELS: "key1=value1,key2=value2"
-@@ -507,7 +507,7 @@ data:
+@@ -496,7 +496,7 @@ data:
  
    # Whether to start the discovery daemon to watch for raw storage devices on nodes in the cluster.
    # This daemon does not need to run if you are only going to create your OSDs based on StorageClassDeviceSets with PVCs.
