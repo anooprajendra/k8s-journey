@@ -1,0 +1,4 @@
+server = "https://docker-registry:32500"
+
+[host."https://docker-registry:32500"]
+   ca = "/etc/containerd/certs.d/docker-registry:32500/tls.crt"
