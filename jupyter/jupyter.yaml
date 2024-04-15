@@ -37,7 +37,7 @@ spec:
         fsGroupChangePolicy: "Always"
       containers:
         - name: jupyter
-          image: docker-registry:32500/jupyter:v0.0.5
+          image: docker-registry:32500/jupyter/jupyter:v0.1.0
           volumeMounts:
             - name: jupyter-persistent
               mountPath: /notebooks
