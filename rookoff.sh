@@ -1,37 +1,51 @@
-#!/usr/bin/env bash
+#!/bin/bash
 
+set -x
+
+# Scale down the rook-ceph-operator
 kubectl -n rook-ceph scale --replicas=0 deployment rook-ceph-operator
 
-kubectl -n rook-ceph exec -it deployment.apps/rook-ceph-tools -- ceph osd set noout
-kubectl -n rook-ceph exec -it deployment.apps/rook-ceph-tools -- ceph osd set nobackfill
-kubectl -n rook-ceph exec -it deployment.apps/rook-ceph-tools -- ceph osd set norecover
-kubectl -n rook-ceph exec -it deployment.apps/rook-ceph-tools -- ceph osd set norebalance
-kubectl -n rook-ceph exec -it deployment.apps/rook-ceph-tools -- ceph osd set nodown
-kubectl -n rook-ceph exec -it deployment.apps/rook-ceph-tools -- ceph osd set pause
-kubectl -n rook-ceph exec -it deployment.apps/rook-ceph-tools -- ceph -s
+# Unset all the ceph OSD params
+OSD_PARAMS="noout nobackfill norecover norebalance nodown pause"
+for i in $OSD_PARAMS; do
+	kubectl -n rook-ceph exec -it deployment.apps/rook-ceph-tools -- ceph osd unset $i
+	sleep 1
+done
 
 read -p "Continue (Y/N)? " cont
 if [ ${cont,} != "y" ]; then
 	exit 0
 fi
 
-kubectl -n rook-ceph scale --replicas=0 deployment csi-cephfsplugin-provisioner      
-kubectl -n rook-ceph scale --replicas=0 deployment csi-rbdplugin-provisioner         
-kubectl -n rook-ceph scale --replicas=0 deployment rook-ceph-crashcollector-k0s-node1
-kubectl -n rook-ceph scale --replicas=0 deployment rook-ceph-crashcollector-k0s-node2
-kubectl -n rook-ceph scale --replicas=0 deployment rook-ceph-crashcollector-k0s-node3
-kubectl -n rook-ceph scale --replicas=0 deployment rook-ceph-exporter-k0s-node1      
-kubectl -n rook-ceph scale --replicas=0 deployment rook-ceph-exporter-k0s-node2      
-kubectl -n rook-ceph scale --replicas=0 deployment rook-ceph-exporter-k0s-node3      
-kubectl -n rook-ceph scale --replicas=0 deployment rook-ceph-mgr-a                   
-kubectl -n rook-ceph scale --replicas=0 deployment rook-ceph-mgr-b                   
-kubectl -n rook-ceph scale --replicas=0 deployment rook-ceph-osd-0                   
-kubectl -n rook-ceph scale --replicas=0 deployment rook-ceph-osd-1                   
-kubectl -n rook-ceph scale --replicas=0 deployment rook-ceph-osd-2                   
-kubectl -n rook-ceph scale --replicas=0 deployment rook-ceph-osd-3                   
-kubectl -n rook-ceph scale --replicas=0 deployment rook-ceph-mgr-a                   
-kubectl -n rook-ceph scale --replicas=0 deployment rook-ceph-mgr-b                   
-kubectl -n rook-ceph scale --replicas=0 deployment rook-ceph-mon-a                   
-kubectl -n rook-ceph scale --replicas=0 deployment rook-ceph-mon-b                   
-kubectl -n rook-ceph scale --replicas=0 deployment rook-ceph-mon-c                   
-kubectl -n rook-ceph scale --replicas=0 deployment rook-ceph-operator                
+# Scale down all the deployments
+DEPLOYMENTLIST="csi-cephfsplugin-provisioner
+csi-rbdplugin-provisioner
+rook-ceph-crashcollector-k0s-node1
+rook-ceph-crashcollector-k0s-node2
+rook-ceph-crashcollector-k0s-node3
+rook-ceph-exporter-k0s-node1
+rook-ceph-exporter-k0s-node2
+rook-ceph-exporter-k0s-node3
+rook-ceph-exporter-k0s-node4
+rook-ceph-mgr-a
+rook-ceph-mgr-b
+rook-ceph-osd-0
+rook-ceph-osd-1
+rook-ceph-osd-2
+rook-ceph-osd-3
+rook-ceph-mgr-a
+rook-ceph-mgr-b
+rook-ceph-mon-a
+rook-ceph-mon-b
+rook-ceph-mon-c
+rook-ceph-operator"
+
+for i in $DEPLOYMENTLIST; do
+	kubectl -n rook-ceph scale --replicas=0 deployment $i
+done
+
+# Patch, and Disable all the daemonsets
+DAEMONSET_LIST="csi-cephfsplugin csi-rbdplugin rook-discover"
+for i in $DAEMONSET_LIST; do
+	kubectl -n rook-ceph patch daemonset $i -p '{"spec": {"template": {"spec":{"nodeSelector":{"nonexisting":"true"}}}}}'
+done
